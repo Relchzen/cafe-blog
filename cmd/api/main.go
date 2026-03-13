@@ -5,9 +5,24 @@ import (
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/joho/godotenv"
+	"github.com/relchzen/cafe-blog/internal/database"
 )
 
 func main() {
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found, using system environment variables")
+	}
+
+	if err := database.Connect(); err != nil {
+		log.Fatal("Failed to connect to database: ", err)
+	}
+
+	if err := database.CreateTables(); err != nil {
+		log.Fatal("Failed to create tables: ", err)
+	}
+
 	port := os.Getenv("PORT")
 
 	if port == "" {
