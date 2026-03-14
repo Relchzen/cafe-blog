@@ -8,6 +8,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/relchzen/cafe-blog/internal/database"
+	"github.com/relchzen/cafe-blog/internal/handlers"
 )
 
 func main() {
@@ -30,6 +31,8 @@ func main() {
 	}
 
 	http.HandleFunc("/health", healthCheckHandler)
+	http.HandleFunc("/api/login", handlers.Login)
+	http.HandleFunc("/api/register", handlers.Register)
 
 	log.Printf("Server starting at port %s", port)
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
