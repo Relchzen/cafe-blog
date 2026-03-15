@@ -2,12 +2,32 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"os"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/relchzen/cafe-blog/internal/database"
 	"github.com/relchzen/cafe-blog/internal/models"
 	"golang.org/x/crypto/bcrypt"
 )
+
+func generateJWT(userId int, email string) (string, error) {
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		return "", fmt.Errorf("JWT_SECRET environment variable is not set")
+	}
+
+	claims := jwt.MapClaims{
+		"user_id": userId,
+		"email":   email,
+		"exp":     time.Now().Add(time.Hour * 24 * 7).Unix(),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(jwtSecret))
+}
 
 func Register(w http.ResponseWriter, r *http.Request) {
 	// Validate the method is a POST request
@@ -77,25 +97,35 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var hashedPassword string
-	var email string
-	query := `SELECT email, password_hash FROM users WHERE email = $1`
+	var user models.User
+	query := `SELECT id, email, password_hash FROM users WHERE email = $1`
 	row := database.DB.QueryRow(query, req.Email)
-	err := row.Scan(&email, &hashedPassword)
+	err := row.Scan(&user.ID, &user.Email, &user.PasswordHash)
 	if err != nil {
 		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
 		return
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(req.Password))
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password))
 	if err != nil {
 		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
+		return
+	}
+
+	token, err := generateJWT(user.ID, user.Email)
+
+	if err != nil {
+		http.Error(w, "Error generating token", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	json.NewEncoder(w).Encode(map[string]interface{}{
 		"message": "Login Successful",
-		"email":   email,
+		"token":   token,
+		"user": map[string]interface{}{
+			"id":    user.ID,
+			"email": user.Email,
+		},
 	})
 }
