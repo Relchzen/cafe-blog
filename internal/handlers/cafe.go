@@ -84,3 +84,51 @@ func CreateCafe(w http.ResponseWriter, r *http.Request) {
 
 	json.NewEncoder(w).Encode(response)
 }
+
+func ListCafes(w http.ResponseWriter, r *http.Request) {
+	// Check method
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	userID := r.Context().Value(middleware.UserIDKey).(int)
+
+	query := `SELECT id, user_id, name, location, rating, notes, photo_url, visit_date, created_at, updated_at
+		FROM cafes
+		WHERE user_id = $1
+		ORDER BY visit_date DESC
+	`
+
+	rows, err := database.DB.Query(query, userID)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+	}
+
+	defer rows.Close()
+
+	var cafes []models.Cafe
+	for rows.Next() {
+		var cafe models.Cafe
+		err := rows.Scan(&cafe.ID,
+			&cafe.UserID,
+			&cafe.Name,
+			&cafe.Location,
+			&cafe.Rating,
+			&cafe.Notes,
+			&cafe.PhotoURL,
+			&cafe.VisitDate,
+			&cafe.CreatedAt,
+			&cafe.UpdatedAt,
+		)
+		if err != nil {
+			fmt.Print(err)
+			http.Error(w, "Error reading data", http.StatusInternalServerError)
+		}
+
+		cafes = append(cafes, cafe)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(cafes)
+}
