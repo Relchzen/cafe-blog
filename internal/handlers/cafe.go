@@ -236,3 +236,53 @@ func UpdateCafe(w http.ResponseWriter, r *http.Request) {
 		"updated_at": updatedAt,
 	})
 }
+
+func DeleteCafe(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	idString := r.PathValue("id")
+	if idString == "" {
+		http.Error(w, "Missing parameter value", http.StatusBadRequest)
+		return
+	}
+
+	cafeID, err := strconv.Atoi(idString)
+	if err != nil {
+		http.Error(w, "Invalid cafe ID", http.StatusBadRequest)
+		return
+	}
+
+	userID := r.Context().Value(middleware.UserIDKey).(int)
+
+	var existingUserID int
+	checkQuery := `SELECT user_id FROM cafes WHERE if = $1`
+	err = database.DB.QueryRow(checkQuery, cafeID).Scan(&existingUserID)
+	if err == sql.ErrNoRows {
+		http.Error(w, "Cafe not found", http.StatusNotFound)
+		return
+	} else if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	if existingUserID != userID {
+		http.Error(w, "Unauthorized - this cafe belongs to another user", http.StatusForbidden)
+		return
+	}
+
+	var deletedID int
+	deleteQuery := `DELETE FROM cafes WHERE id=$1 RETURNING id`
+	err = database.DB.QueryRow(deleteQuery, cafeID).Scan(&deletedID)
+	if err != nil {
+		http.Error(w, "Failed to delete cafe. Please try again.", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Cafe deleted successfully",
+	})
+}

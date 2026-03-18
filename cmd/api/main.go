@@ -49,6 +49,8 @@ func main() {
 		switch r.Method {
 		case http.MethodPut:
 			middleware.AuthMiddleware(handlers.UpdateCafe)(w, r)
+		case http.MethodDelete:
+			middleware.AuthMiddleware(handlers.DeleteCafe)(w, r)
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
