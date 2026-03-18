@@ -21,6 +21,7 @@ type CreateCafeRequest struct {
 	Rating    *int    `json:"rating"`
 	Notes     string  `json:"notes"`
 	VisitDate *string `json:"visit_date"`
+	PhotoURL  *string `json:"photo_url,omitempty"`
 }
 
 type UpdateCafeRequest struct {
@@ -29,4 +30,5 @@ type UpdateCafeRequest struct {
 	Rating    *int    `json:"rating"`
 	Notes     string  `json:"notes"`
 	VisitDate *string `json:"visit_date"`
+	PhotoURL  *string `json:"photo_url,omitempty"`
 }

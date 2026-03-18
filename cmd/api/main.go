@@ -45,6 +45,14 @@ func main() {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
 	})
+	http.HandleFunc("/api/cafe/{id}", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPut:
+			middleware.AuthMiddleware(handlers.UpdateCafe)(w, r)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
 
 	log.Printf("Server starting at port %s", port)
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
