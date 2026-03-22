@@ -10,9 +10,15 @@ import (
 	"github.com/relchzen/cafe-blog/internal/database"
 	"github.com/relchzen/cafe-blog/internal/handlers"
 	"github.com/relchzen/cafe-blog/internal/middleware"
+	"github.com/relchzen/cafe-blog/internal/utils"
 )
 
 func main() {
+	if err := utils.InitializeStorage(); err != nil {
+		log.Fatal("Failed to initialize storage:", err)
+	}
+	log.Println("S3 storage initialized successfully")
+
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, using system environment variables")
 	}
@@ -55,6 +61,9 @@ func main() {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
 	})
+
+	http.HandleFunc("/api/cafe/{id}/photos", middleware.AuthMiddleware(handlers.UploadCafePhotos))
+	http.HandleFunc("/api/cafe/{cafeId}/photo/{photoId}", middleware.AuthMiddleware(handlers.DeleteCafePhotos))
 
 	log.Printf("Server starting at port %s", port)
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
