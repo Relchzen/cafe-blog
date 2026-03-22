@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -103,13 +104,11 @@ func CreateCafe(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 
-	response := map[string]interface{}{
+	json.NewEncoder(w).Encode(map[string]interface{}{
 		"message":    "Cafe visit created successfully",
 		"cafe_id":    cafeID,
 		"created_at": createdAt,
-	}
-
-	json.NewEncoder(w).Encode(response)
+	})
 }
 
 func ListCafes(w http.ResponseWriter, r *http.Request) {
@@ -121,7 +120,7 @@ func ListCafes(w http.ResponseWriter, r *http.Request) {
 
 	userID := r.Context().Value(middleware.UserIDKey).(int)
 
-	query := `SELECT id, user_id, name, location, rating, notes, photo_url, visit_date, created_at, updated_at
+	query := `SELECT id, user_id, name, location, rating, notes, visit_date, created_at, updated_at
 		FROM cafes
 		WHERE user_id = $1
 		ORDER BY visit_date DESC
@@ -143,7 +142,6 @@ func ListCafes(w http.ResponseWriter, r *http.Request) {
 			&cafe.Location,
 			&cafe.Rating,
 			&cafe.Notes,
-			&cafe.PhotoURL,
 			&cafe.VisitDate,
 			&cafe.CreatedAt,
 			&cafe.UpdatedAt,
@@ -151,6 +149,20 @@ func ListCafes(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			fmt.Print(err)
 			http.Error(w, "Error reading data", http.StatusInternalServerError)
+		}
+
+		photoQuery := `SELECT photo_url FROM cafe_photos WHERE cafe_id = $1 ORDER BY display_order`
+		photoRows, _ := database.DB.Query(photoQuery, cafe.ID)
+		if err == nil {
+			var photoURLs []string
+			for photoRows.Next() {
+				var photoURL string
+				err = photoRows.Scan(&photoURL)
+				photoURLs = append(photoURLs, photoURL)
+			}
+			photoRows.Close()
+
+			cafe.PhotoURLs = photoURLs
 		}
 
 		cafes = append(cafes, cafe)
@@ -258,9 +270,9 @@ func DeleteCafe(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value(middleware.UserIDKey).(int)
 
 	var existingUserID int
-	checkQuery := `SELECT user_id FROM cafes WHERE if = $1`
+	checkQuery := `SELECT user_id FROM cafes WHERE id = $1`
 	err = database.DB.QueryRow(checkQuery, cafeID).Scan(&existingUserID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		http.Error(w, "Cafe not found", http.StatusNotFound)
 		return
 	} else if err != nil {
