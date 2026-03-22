@@ -14,14 +14,14 @@ import (
 )
 
 func main() {
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found, using system environment variables")
+	}
+
 	if err := utils.InitializeStorage(); err != nil {
 		log.Fatal("Failed to initialize storage:", err)
 	}
 	log.Println("S3 storage initialized successfully")
-
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found, using system environment variables")
-	}
 
 	if err := database.Connect(); err != nil {
 		log.Fatal("Failed to connect to database: ", err)
